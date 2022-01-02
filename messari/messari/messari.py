@@ -549,3 +549,34 @@ class Messari(DataLoader):
                 timeseries_df = timeseries_df.xs(col_name, axis=1, level=1)
             return timeseries_df
         return response_data
+
+    def get_price_timeseries(self, asset_slugs: Union[str, List], asset_metric: str,
+                              start: str = None, end: str = None, interval: str = '1d',
+                              to_dataframe: bool = True) -> Union[Dict, pd.DataFrame]:
+        asset_slugs = validate_input(asset_slugs)
+        payload = {'interval': interval}
+        if start:
+            if not end:
+                raise ValueError('End date must be provided')
+            payload['start'] = start
+            payload['end'] = end
+        base_url_template = Template(f'{BASE_URL}/$asset_key/metrics/{asset_metric}/time-series?columns=close')
+        response_data = {}
+        for asset in asset_slugs:
+            url = base_url_template.substitute(asset_key=asset)
+            response = self.get_response(url, params=payload, headers=self.api_dict)
+            response_flat = convert_flatten(response['data'])
+            response_data[asset] = response_flat
+        if to_dataframe:
+            timeseries_df = timeseries_to_dataframe(response_data)
+            if asset_metric != 'price':
+                col_name = timeseries_df.columns[0][1]
+                timeseries_df = timeseries_df.xs(col_name, axis=1, level=1)
+            return timeseries_df
+        return response_data
+
+
+
+
+
+
